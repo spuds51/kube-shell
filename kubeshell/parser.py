@@ -12,22 +12,21 @@ class CommandParser(object):
         self.parser = ArgumentParser(prog='kubectl')
         self.walk(self.parser, self.api_schema)
 
-    def walk(self, root_parser, command):
+    def walk(self, root_parser, command, indent=0):
         """ Walks the API JSON schema """
-        for cmd, details in command.items():
-            subparser = root_parser.add_subparsers()
-            if details.get('subcommands') and details['subcommands']:
-                for subcmd, subdetails in details['subcommands'].items():
-                    child_parser = subparser.add_parser(subcmd)
-                    print("subcommand: %s" % subcmd)
-                    self.walk(child_parser, subdetails)
-            elif details.get('args') and details['args']:
-                for arg in details.get('args'):
-                    subparser.add_parser(arg)
-            else:
-                if details.get('options') and not details['options']:
-                    for key, value in details.get('options').items():
-                        root_parser.add_argument(key, help=value.get('help'))
+        subparser = root_parser.add_subparsers()
+        cmd, details = command.items().pop()
+        if details.get('subcommands') and details['subcommands']:
+            for subcmd, subdetails in details['subcommands'].items():
+                child_parser = subparser.add_parser(subcmd, help=subdetails['help'])
+                if len(subdetails) == 1:
+                    self.walk(child_parser, subdetails, indent+1)
+                if subdetails.get('args') and subdetails['args']:
+                    for arg in subdetails['args']:
+                        subparser.add_parser(arg)
+                if subdetails.get('options') and subdetails['options']:
+                    for key, value in subdetails['options'].items():
+                        child_parser.add_argument(key, help=value.get('help'))
 
 
 if __name__ == '__main__':
